@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "Data/WeatherData.h"
+#include "AbilitySystemInterface.h"
 #include "WeatherSystem.generated.h"
 
 UCLASS()
@@ -22,6 +23,9 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "Weather")
     void SetWeather(EWeatherType NewWeather);
+
+    UFUNCTION(BlueprintCallable, Category = "Weather|GAS")
+    void ApplyWeatherEffectsToCharacter(AActor* Character);
 
 private:
     void UpdateWeather();

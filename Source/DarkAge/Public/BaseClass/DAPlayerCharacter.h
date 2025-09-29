@@ -1,11 +1,14 @@
 // DAPlayerCharacter.h
-// Clean recreation with all fixes and improvements
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "InputActionValue.h"
+#include "AbilitySystemComponent.h"
+#include "AbilitySystemInterface.h"  // For IAbilitySystemInterface
+#include "GameplayEffectTypes.h"
+#include "GAS/DASurvivalAttributeSet.h"  // For UDASurvivalAttributeSet
 #include "Interfaces/PoliticalActorInterface.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "DAPlayerCharacter.generated.h"
@@ -72,7 +75,8 @@ protected:
 	TObjectPtr<UInventoryComponent> InventoryComponent;
 
 public:
-	ADAPlayerCharacter();
+
+	ADAPlayerCharacter((const FObjectInitializer& ObjectInitializer);
 
 	// Called by StatlineComponent when shiver should occur
 	void PlayShiverAnimation();
@@ -94,6 +98,16 @@ public:
 	FORCEINLINE UStatlineComponent* GetStatlineComponent() const { return StatlineComponent; }
 
 	FORCEINLINE UInventoryComponent* GetInventoryComponent() const { return InventoryComponent; }
+
+	// IAbilitySystemInterface
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override { return AbilitySystemComponent; }
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Abilities")
+	UAbilitySystemComponent* AbilitySystemComponent;
+
+	// Grant initial abilities/effects here
+	UFUNCTION(BlueprintCallable, Category = "Abilities")
+	void InitializeAbilities();
 
 protected:
 	// Called when the game starts or when spawned

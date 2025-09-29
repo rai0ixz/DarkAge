@@ -5,6 +5,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameplayAbilitySpec.h"
 #include "Components/InputComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
@@ -12,7 +13,6 @@
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
 #include "Components/InventoryComponent.h"
-#include "Components/StatlineComponent.h"
 #include "Components/CraftingComponent.h"
 #include "Components/PlayerSkillsComponent.h"
 #include "Components/NotorietyComponent.h"
@@ -32,8 +32,10 @@
 #include "Data/InventoryData.h"
 #include "Core/DA_NPCManagerSubsystem.h"
 #include "Components/AINeedsPlanningComponent.h"
+#include "GAS/DASurvivalDepletionAbility.h"  // For UDASurvivalDepletionAbility
 
-ADAPlayerCharacter::ADAPlayerCharacter()
+ADAPlayerCharacter::ADAPlayerCharacter(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
 {
 	PrimaryActorTick.bCanEverTick = true;
 
@@ -79,8 +81,11 @@ ADAPlayerCharacter::ADAPlayerCharacter()
 	QuestLogComponent = CreateDefaultSubobject<UDAQuestLogComponent>(TEXT("QuestLogComponent"));
 	InteractionComponent = CreateDefaultSubobject<UDAInteractionComponent>(TEXT("InteractionComponent"));
 	DiseaseManagementComponent = CreateDefaultSubobject<UDiseaseManagementComponent>(TEXT("DiseaseManagementComponent"));
-	StatlineComponent = CreateDefaultSubobject<UStatlineComponent>(TEXT("StatlineComponent"));
 	InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("InventoryComponent"));
+
+	AbilitySystemComponent = ObjectInitializer.CreateDefaultSubobject<UAbilitySystemComponent>(this, TEXT("AbilitySystemComponent"));
+	AbilitySystemComponent->SetIsReplicated(true);
+	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);  // Balanced for RPG
 }
 
 void ADAPlayerCharacter::BeginPlay()
@@ -111,14 +116,18 @@ void ADAPlayerCharacter::BeginPlay()
 		}
 	}
 
-	// Connect stat changes to HUD updates
-	if (StatlineComponent)
+	// GAS attributes will be monitored via AbilitySystemComponent delegates
+	if (AbilitySystemComponent)
 	{
-		StatlineComponent->OnStatChanged.AddDynamic(this, &ADAPlayerCharacter::OnStatChanged);
+		// Bind to attribute changes for HUD updates
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UDASurvivalAttributeSet::GetHealthAttribute()).AddUObject(this, &ADAPlayerCharacter::OnAttributeChanged);
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UDASurvivalAttributeSet::GetStaminaAttribute()).AddUObject(this, &ADAPlayerCharacter::OnAttributeChanged);
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UDASurvivalAttributeSet::GetHungerAttribute()).AddUObject(this, &ADAPlayerCharacter::OnAttributeChanged);
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UDASurvivalAttributeSet::GetThirstAttribute()).AddUObject(this, &ADAPlayerCharacter::OnAttributeChanged);
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("DAPlayerCharacter: No StatlineComponent found!"));
+		UE_LOG(LogTemp, Warning, TEXT("DAPlayerCharacter: No AbilitySystemComponent found!"));
 	}
 
 	// Register with survival subsystem
@@ -131,6 +140,24 @@ void ADAPlayerCharacter::BeginPlay()
 				SurvivalSubsystem->RegisterCharacter(this);
 			}
 		}
+	}
+
+	if (AbilitySystemComponent)
+	{
+		// Initialize AttributeSets here (e.g., SurvivalAttributeSet)
+		// Load DataTable for initial values
+		UDataTable* AttributeDataTable = LoadObject<UDataTable>(nullptr, TEXT("/Game/_DA/Data/InitialAttributes.InitialAttributes"));
+		if (AttributeDataTable)
+		{
+			AbilitySystemComponent->InitStats(UDASurvivalAttributeSet::StaticClass(), AttributeDataTable);
+		}
+		else
+		{
+			// Fallback to default values
+			AbilitySystemComponent->InitStats(UDASurvivalAttributeSet::StaticClass(), nullptr);
+		}
+
+		InitializeAbilities();
 	}
 }
 
@@ -194,23 +221,35 @@ void ADAPlayerCharacter::HandleInteract(const FInputActionValue& Value)
 		InteractionComponent->Interact();
 	}
 }
-
-void ADAPlayerCharacter::OnStatChanged(FName StatName, float NewValue)
+void ADAPlayerCharacter::InitializeAbilities()
 {
-	if (!StatlineComponent || !IsValid(this))
+	if (!HasAuthority() && !IsLocallyControlled()) return;  // Server/client handling
+
+	// Example: Grant passive survival depletion ability
+	FGameplayAbilitySpec DepletionSpec(UDASurvivalDepletionAbility::StaticClass(), 1, INDEX_NONE);
+	AbilitySystemComponent->GiveAbility(DepletionSpec);
+
+	// Grant other abilities, e.g., combat or crafting
+	// FGameplayAbilitySpec CombatSpec(YourCombatAbilityClass::StaticClass(), 1, INDEX_NONE);
+	// AbilitySystemComponent->GiveAbility(CombatSpec);
+}
+
+void ADAPlayerCharacter::OnAttributeChanged(const FOnAttributeChangeData& Data)
+{
+	if (!AbilitySystemComponent || !IsValid(this))
 	{
 		return;
 	}
 
-	// Update HUD with current stat values
-	float Health = StatlineComponent->GetCurrentStatValue(FName("Health"));
-	float MaxHealth = StatlineComponent->GetMaxStatValue(FName("Health"));
-	float Stamina = StatlineComponent->GetCurrentStatValue(FName("Stamina"));
-	float MaxStamina = StatlineComponent->GetMaxStatValue(FName("Stamina"));
-	float Hunger = StatlineComponent->GetCurrentStatValue(FName("Hunger"));
-	float MaxHunger = StatlineComponent->GetMaxStatValue(FName("Hunger"));
-	float Thirst = StatlineComponent->GetCurrentStatValue(FName("Thirst"));
-	float MaxThirst = StatlineComponent->GetMaxStatValue(FName("Thirst"));
+	// Update HUD with current attribute values
+	float Health = AbilitySystemComponent->GetNumericAttribute(UDASurvivalAttributeSet::GetHealthAttribute());
+	float MaxHealth = AbilitySystemComponent->GetNumericAttributeBase(UDASurvivalAttributeSet::GetHealthAttribute());
+	float Stamina = AbilitySystemComponent->GetNumericAttribute(UDASurvivalAttributeSet::GetStaminaAttribute());
+	float MaxStamina = AbilitySystemComponent->GetNumericAttributeBase(UDASurvivalAttributeSet::GetStaminaAttribute());
+	float Hunger = AbilitySystemComponent->GetNumericAttribute(UDASurvivalAttributeSet::GetHungerAttribute());
+	float MaxHunger = 100.0f; // Assuming max is 100
+	float Thirst = AbilitySystemComponent->GetNumericAttribute(UDASurvivalAttributeSet::GetThirstAttribute());
+	float MaxThirst = 100.0f; // Assuming max is 100
 
 	// Update HUD
 	if (UWorld* World = GetWorld())
@@ -227,9 +266,9 @@ void ADAPlayerCharacter::OnStatChanged(FName StatName, float NewValue)
 
 void ADAPlayerCharacter::AttemptLockpick()
 {
-	if (!SkillsComponent || !StatlineComponent)
+	if (!SkillsComponent || !AbilitySystemComponent)
 	{
-		UE_LOG(LogTemp, Error, TEXT("AttemptLockpick: Missing required components (SkillsComponent or StatlineComponent)."));
+		UE_LOG(LogTemp, Error, TEXT("AttemptLockpick: Missing required components (SkillsComponent or AbilitySystemComponent)."));
 		return;
 	}
 
@@ -245,10 +284,15 @@ void ADAPlayerCharacter::AttemptLockpick()
 		UE_LOG(LogTemp, Log, TEXT("AttemptLockpick: 'Steady Hands' perk is active. Reducing critical failure chance."));
 	}
 
+	// Modify success chance based on Dexterity attribute
+	float Dexterity = AbilitySystemComponent->GetNumericAttribute(UDASurvivalAttributeSet::GetDexterityAttribute());
+	BaseSuccessChance += (Dexterity - 10.0f) * 2.0f; // +2% per point above 10
+
 	BaseSuccessChance = FMath::Clamp(BaseSuccessChance, 0.f, 100.f);
 	BaseCritFailChance = FMath::Clamp(BaseCritFailChance, 0.f, 100.f);
 
 	UE_LOG(LogTemp, Log, TEXT("--- Attempting Lockpick ---"));
+	UE_LOG(LogTemp, Log, TEXT("Dexterity: %.1f"), Dexterity);
 	UE_LOG(LogTemp, Log, TEXT("Final Success Chance: %.1f%%"), BaseSuccessChance);
 	UE_LOG(LogTemp, Log, TEXT("Final Critical Failure (Noise) Chance: %.1f%%"), BaseCritFailChance);
 }
@@ -314,11 +358,11 @@ int32 ADAPlayerCharacter::GetPoliticalInfluence_Implementation(FName FactionID)
 		BaseInfluence += FMath::FloorToInt(Reputation * 0.5f); // 0.5 influence per reputation point
 	}
 
-	// Influence from player level/stats (if available)
-	if (StatlineComponent)
+	// Influence from player level/stats (if available) - using Strength as level proxy for now
+	if (AbilitySystemComponent)
 	{
-		float PlayerLevel = StatlineComponent->GetCurrentStatValue(FName("Level"));
-		BaseInfluence += FMath::FloorToInt(PlayerLevel * 2.0f); // 2 influence per level
+		float PlayerStrength = AbilitySystemComponent->GetNumericAttribute(UDASurvivalAttributeSet::GetStrengthAttribute());
+		BaseInfluence += FMath::FloorToInt(PlayerStrength * 2.0f); // 2 influence per strength point
 	}
 
 	// Influence from notoriety (criminals have different political influence)
@@ -838,17 +882,48 @@ void ADAPlayerCharacter::NegotiatePeaceDebug(FString Faction1String, FString Fac
 // --- Survival & Stats Debug Commands ---
 void ADAPlayerCharacter::PrintPlayerStatsDebug()
 {
-	if (StatlineComponent)
+	if (AbilitySystemComponent)
 	{
-		StatlineComponent->PrintStats();
+		UE_LOG(LogTemp, Log, TEXT("=== Player GAS Attributes ==="));
+		UE_LOG(LogTemp, Log, TEXT("Health: %.1f/%.1f"),
+			AbilitySystemComponent->GetNumericAttribute(UDASurvivalAttributeSet::GetHealthAttribute()),
+			AbilitySystemComponent->GetNumericAttributeBase(UDASurvivalAttributeSet::GetHealthAttribute()));
+		UE_LOG(LogTemp, Log, TEXT("Hunger: %.1f/100.0"),
+			AbilitySystemComponent->GetNumericAttribute(UDASurvivalAttributeSet::GetHungerAttribute()));
+		UE_LOG(LogTemp, Log, TEXT("Thirst: %.1f/100.0"),
+			AbilitySystemComponent->GetNumericAttribute(UDASurvivalAttributeSet::GetThirstAttribute()));
+		UE_LOG(LogTemp, Log, TEXT("Warmth: %.1f/100.0"),
+			AbilitySystemComponent->GetNumericAttribute(UDASurvivalAttributeSet::GetWarmthAttribute()));
+		UE_LOG(LogTemp, Log, TEXT("Sleep: %.1f/100.0"),
+			AbilitySystemComponent->GetNumericAttribute(UDASurvivalAttributeSet::GetSleepAttribute()));
+		UE_LOG(LogTemp, Log, TEXT("Strength: %.1f"),
+			AbilitySystemComponent->GetNumericAttribute(UDASurvivalAttributeSet::GetStrengthAttribute()));
+		UE_LOG(LogTemp, Log, TEXT("Dexterity: %.1f"),
+			AbilitySystemComponent->GetNumericAttribute(UDASurvivalAttributeSet::GetDexterityAttribute()));
 	}
 }
 
 void ADAPlayerCharacter::ModifyStatDebug(FString StatName, float Delta)
 {
-	if (StatlineComponent)
+	if (AbilitySystemComponent)
 	{
-		StatlineComponent->UpdateStat(FName(*StatName), Delta);
+		FName StatFName = FName(*StatName);
+		if (StatFName == "Health")
+		{
+			float NewValue = AbilitySystemComponent->GetNumericAttribute(UDASurvivalAttributeSet::GetHealthAttribute()) + Delta;
+			AbilitySystemComponent->SetNumericAttributeBase(UDASurvivalAttributeSet::GetHealthAttribute(), FMath::Clamp(NewValue, 0.f, 100.f));
+		}
+		else if (StatFName == "Hunger")
+		{
+			float NewValue = AbilitySystemComponent->GetNumericAttribute(UDASurvivalAttributeSet::GetHungerAttribute()) + Delta;
+			AbilitySystemComponent->SetNumericAttributeBase(UDASurvivalAttributeSet::GetHungerAttribute(), FMath::Clamp(NewValue, 0.f, 100.f));
+		}
+		else if (StatFName == "Thirst")
+		{
+			float NewValue = AbilitySystemComponent->GetNumericAttribute(UDASurvivalAttributeSet::GetThirstAttribute()) + Delta;
+			AbilitySystemComponent->SetNumericAttributeBase(UDASurvivalAttributeSet::GetThirstAttribute(), FMath::Clamp(NewValue, 0.f, 100.f));
+		}
+		// Add more stats as needed
 		UE_LOG(LogTemp, Log, TEXT("Modified %s by %.2f"), *StatName, Delta);
 	}
 }
@@ -866,10 +941,10 @@ void ADAPlayerCharacter::TestSurvivalMechanicsDebug()
 		UE_LOG(LogTemp, Log, TEXT("Survival subsystem found and active"));
 
 		// Test stat updates (this will trigger HUD updates)
-		if (StatlineComponent)
+		if (AbilitySystemComponent)
 		{
-			float currentHunger = StatlineComponent->GetCurrentStatValue(FName("Hunger"));
-			float currentThirst = StatlineComponent->GetCurrentStatValue(FName("Thirst"));
+			float currentHunger = AbilitySystemComponent->GetNumericAttribute(UDASurvivalAttributeSet::GetHungerAttribute());
+			float currentThirst = AbilitySystemComponent->GetNumericAttribute(UDASurvivalAttributeSet::GetThirstAttribute());
 			UE_LOG(LogTemp, Log, TEXT("Current Hunger: %.1f, Thirst: %.1f"), currentHunger, currentThirst);
 		}
 	}

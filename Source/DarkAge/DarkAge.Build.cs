@@ -14,6 +14,7 @@ public class DarkAge : ModuleRules
             "InputCore",
             "EnhancedInput",
             "GameplayTags",
+            "GameplayAbilities",
             "UMG",
             "Slate",
             "SlateCore",

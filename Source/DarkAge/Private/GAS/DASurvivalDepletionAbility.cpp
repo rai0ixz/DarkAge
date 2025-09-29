@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "GAS/DASurvivalDepletionAbility.h"
+#include "AbilitySystemComponent.h"  // For UAbilitySystemComponent
 #include "AbilitySystemBlueprintLibrary.h"  // For UAbilitySystemBlueprintLibrary
 
 UDASurvivalDepletionAbility::UDASurvivalDepletionAbility()

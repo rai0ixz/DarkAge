@@ -1,7 +1,10 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
-#include "GAS/DASurvivalAttributeSet.h"
 #include "Net/UnrealNetwork.h"  // For DOREPLIFETIME
+#include "AbilitySystemComponent.h"  // For GAS types
+#include "GameplayEffectTypes.h"  // For FGameplayEffectModCallbackData
+#include "GameplayEffect.h"  // For FGameplayEffectModCallbackData
+#include "GAS/DASurvivalAttributeSet.h"
 
 UDASurvivalAttributeSet::UDASurvivalAttributeSet()
 {
@@ -22,6 +25,12 @@ UDASurvivalAttributeSet::UDASurvivalAttributeSet()
     Health.SetCurrentValue(100.f);
     Stamina.SetBaseValue(100.f);
     Stamina.SetCurrentValue(100.f);
+    BaseDamage.SetBaseValue(10.f);
+    BaseDamage.SetCurrentValue(10.f);
+    STRModifier.SetBaseValue(0.f);
+    STRModifier.SetCurrentValue(0.f);
+    ArmorDR.SetBaseValue(0.f);
+    ArmorDR.SetCurrentValue(0.f);
 }
 
 void UDASurvivalAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -36,6 +45,9 @@ void UDASurvivalAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimePropert
     DOREPLIFETIME(UDASurvivalAttributeSet, Dexterity);
     DOREPLIFETIME(UDASurvivalAttributeSet, Health);
     DOREPLIFETIME(UDASurvivalAttributeSet, Stamina);
+    DOREPLIFETIME(UDASurvivalAttributeSet, BaseDamage);
+    DOREPLIFETIME(UDASurvivalAttributeSet, STRModifier);
+    DOREPLIFETIME(UDASurvivalAttributeSet, ArmorDR);
 }
 
 void UDASurvivalAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
@@ -48,10 +60,11 @@ void UDASurvivalAttributeSet::PreAttributeChange(const FGameplayAttribute& Attri
     }
     if (Attribute == GetHealthAttribute())
     {
-        NewValue = FMath::Clamp(NewValue, 0.f, GetHealthAttribute().GetBaseValue());
+        NewValue = FMath::Clamp(NewValue, 0.f, Health.GetBaseValue());
     }
 }
 
+/*
 void UDASurvivalAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
 {
     Super::PostGameplayEffectExecute(Data);
@@ -60,11 +73,12 @@ void UDASurvivalAttributeSet::PostGameplayEffectExecute(const FGameplayEffectMod
     if (Data.EvaluatedData.Attribute == GetHungerAttribute() && Hunger.GetCurrentValue() <= 0.f)
     {
         // Damage health (example rate from your needs table)
-        SetHealth(FMath::Clamp(GetHealth() - 0.5f, 0.f, GetHealthAttribute().GetBaseValue()));
+        SetHealth(FMath::Clamp(GetHealth() - 0.5f, 0.f, Health.GetBaseValue()));
     }
     if (Data.EvaluatedData.Attribute == GetThirstAttribute() && Thirst.GetCurrentValue() <= 0.f)
     {
-        SetHealth(FMath::Clamp(GetHealth() - 1.f, 0.f, GetHealthAttribute().GetBaseValue()));
+        SetHealth(FMath::Clamp(GetHealth() - 1.f, 0.f, Health.GetBaseValue()));
     }
     // Add similar for Warmth (e.g., -1 HP/15s), Sleep (hallucinations via effects)
 }
+*/

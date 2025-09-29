@@ -27,13 +27,12 @@ class UFactionReputationComponent;
 class UDAQuestLogComponent;
 class UDAInteractionComponent;
 class UDiseaseManagementComponent;
-class UStatlineComponent;
 class UInventoryComponent;
 class UAdvancedSurvivalSubsystem;
 class UDAUIManager;
 
 UCLASS()
-class DARKAGE_API ADAPlayerCharacter : public ACharacter, public IPoliticalActorInterface
+class DARKAGE_API ADAPlayerCharacter : public ACharacter, public IAbilitySystemInterface, public IPoliticalActorInterface
 {
 	GENERATED_BODY()
 
@@ -68,18 +67,14 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UDiseaseManagementComponent> DiseaseManagementComponent;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UStatlineComponent> StatlineComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UInventoryComponent> InventoryComponent;
 
 public:
 
-	ADAPlayerCharacter((const FObjectInitializer& ObjectInitializer);
+ADAPlayerCharacter(const FObjectInitializer& ObjectInitializer);
 
-	// Called by StatlineComponent when shiver should occur
-	void PlayShiverAnimation();
 
 	// --- Gameplay Actions ---
 	UFUNCTION(BlueprintCallable, Category = "PlayerCharacter|Actions")
@@ -95,7 +90,6 @@ public:
 
 	FORCEINLINE UDiseaseManagementComponent* GetDiseaseManagementComponent() const { return DiseaseManagementComponent; }
 
-	FORCEINLINE UStatlineComponent* GetStatlineComponent() const { return StatlineComponent; }
 
 	FORCEINLINE UInventoryComponent* GetInventoryComponent() const { return InventoryComponent; }
 
@@ -154,9 +148,13 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enhanced Input", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UInputAction> InteractAction;
 
+
 	// --- Animation Montages ---
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Montages")
 	TObjectPtr<UAnimMontage> ShiverAnimationMontage;
+
+	// Called when player should shiver due to cold
+	void PlayShiverAnimation();
 
 	// --- Input Action Handlers ---
 	void HandleMove(const FInputActionValue& Value);
@@ -209,6 +207,7 @@ public:
 	UFUNCTION(Exec, Category = "Debug|Interaction")
 	void TestInteractionDebug();
 
-	// Stat change callback
-	void OnStatChanged(FName StatName, float NewValue);
+
+	// GAS attribute change callback
+	void OnAttributeChanged(const FOnAttributeChangeData& Data);
 };

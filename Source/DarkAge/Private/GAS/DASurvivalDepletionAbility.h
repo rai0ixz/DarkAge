@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "Abilities/GameplayAbility.h"
 #include "GameplayEffect.h"  // For TSubclassOf<UGameplayEffect>
-#include "AbilityTasks/AbilityTask_WaitDelay.h"  // For UAbilityTask_WaitDelay
+#include "Abilities/Tasks/AbilityTask_WaitDelay.h"  // For UAbilityTask_WaitDelay
 #include "DASurvivalDepletionAbility.generated.h"
 
 UCLASS()

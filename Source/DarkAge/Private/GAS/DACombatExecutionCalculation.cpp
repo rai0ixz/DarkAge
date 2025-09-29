@@ -3,38 +3,35 @@
 #include "GAS/DACombatExecutionCalculation.h"
 #include "AbilitySystemComponent.h"
 #include "GameplayTagContainer.h"  // For FGameplayTag
+#include "GAS/DASurvivalAttributeSet.h"  // For attribute accessors
 
-// Define static attributes using tags (setup in GameplayTags.ini)
+// Define static attributes using attribute set accessors
 FGameplayAttribute FDACombatStatics::BaseDamageAttribute()
 {
-    static FGameplayAttribute Attr(FGameplayAttribute::GetPropertyFromString("BaseDamage"));
-    return Attr;
+    return UDASurvivalAttributeSet::GetBaseDamageAttribute();
 }
 
 FGameplayAttribute FDACombatStatics::STRModifierAttribute()
 {
-    static FGameplayAttribute Attr(FGameplayAttribute::GetPropertyFromString("STRModifier"));
-    return Attr;
+    return UDASurvivalAttributeSet::GetSTRModifierAttribute();
 }
 
 FGameplayAttribute FDACombatStatics::ArmorDRAttribute()
 {
-    static FGameplayAttribute Attr(FGameplayAttribute::GetPropertyFromString("ArmorDR"));
-    return Attr;
+    return UDASurvivalAttributeSet::GetArmorDRAttribute();
 }
 
 FGameplayAttribute FDACombatStatics::HealthAttribute()
 {
-    static FGameplayAttribute Attr(FGameplayAttribute::GetPropertyFromString("Health"));
-    return Attr;
+    return UDASurvivalAttributeSet::GetHealthAttribute();
 }
 
 UDACombatExecutionCalculation::UDACombatExecutionCalculation()
 {
     // Define captured attributes in constructor for GAS to know what to snapshot
-    RelevantAttributesToCapture.Add(FDACombatStatics::BaseDamageAttribute());
-    RelevantAttributesToCapture.Add(FDACombatStatics::STRModifierAttribute());
-    RelevantAttributesToCapture.Add(FDACombatStatics::ArmorDRAttribute());
+    RelevantAttributesToCapture.Add(FGameplayEffectAttributeCaptureDefinition(FDACombatStatics::BaseDamageAttribute(), EGameplayEffectAttributeCaptureSource::Source, true));
+    RelevantAttributesToCapture.Add(FGameplayEffectAttributeCaptureDefinition(FDACombatStatics::STRModifierAttribute(), EGameplayEffectAttributeCaptureSource::Source, true));
+    RelevantAttributesToCapture.Add(FGameplayEffectAttributeCaptureDefinition(FDACombatStatics::ArmorDRAttribute(), EGameplayEffectAttributeCaptureSource::Target, true));
 }
 
 void UDACombatExecutionCalculation::Execute_Implementation(const FGameplayEffectCustomExecutionParameters& ExecutionParams, FGameplayEffectCustomExecutionOutput& OutExecutionOutput) const
@@ -47,13 +44,16 @@ void UDACombatExecutionCalculation::Execute_Implementation(const FGameplayEffect
     FAggregatorEvaluateParameters EvalParams;
 
     float BaseDamage = 0.f;
-    ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(FDACombatStatics::BaseDamageAttribute(), EvalParams, BaseDamage);
+    FGameplayEffectAttributeCaptureDefinition BaseDamageCapture(FDACombatStatics::BaseDamageAttribute(), EGameplayEffectAttributeCaptureSource::Source, true);
+    ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(BaseDamageCapture, EvalParams, BaseDamage);
 
     float STRModifier = 0.f;
-    ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(FDACombatStatics::STRModifierAttribute(), EvalParams, STRModifier);
+    FGameplayEffectAttributeCaptureDefinition STRModifierCapture(FDACombatStatics::STRModifierAttribute(), EGameplayEffectAttributeCaptureSource::Source, true);
+    ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(STRModifierCapture, EvalParams, STRModifier);
 
     float ArmorDR = 0.f;
-    ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(FDACombatStatics::ArmorDRAttribute(), EvalParams, ArmorDR);
+    FGameplayEffectAttributeCaptureDefinition ArmorDRCapture(FDACombatStatics::ArmorDRAttribute(), EGameplayEffectAttributeCaptureSource::Target, true);
+    ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(ArmorDRCapture, EvalParams, ArmorDR);
 
     // Your damage formula (adjust per weapon type via tags or params)
     float WeaponModifier = 0.5f;  // Example for swords; pass via SetByCaller

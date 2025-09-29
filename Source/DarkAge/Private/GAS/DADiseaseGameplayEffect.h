@@ -17,14 +17,14 @@ public:
 
     // Properties for stages (can be set in BP child classes)
     UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Disease")
-    float StageDuration[3] = {24.f * 3600.f, 72.f * 3600.f, 48.f * 3600.f};  // Seconds (real-time hours)
+    TArray<float> StageDuration = {24.f * 3600.f, 72.f * 3600.f, 48.f * 3600.f};  // Seconds (real-time hours)
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Disease")
-    float DexterityModifier[3] = {0.f, -5.f, -10.f};  // Stage effects
+    TArray<float> DexterityModifier = {0.f, -5.f, -10.f};  // Stage effects
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Disease")
-    float StrengthModifier[3] = {0.f, 0.f, -5.f};
+    TArray<float> StrengthModifier = {0.f, 0.f, -5.f};
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Disease")
-    float SpreadChance[3] = {0.f, 0.05f, 0.15f};  // Probability to spread
+    TArray<float> SpreadChance = {0.f, 0.05f, 0.15f};  // Probability to spread
 };

@@ -3,7 +3,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Engine/World.h"
 #include "BaseClass/DAPlayerCharacter.h"
-#include "Components/StatlineComponent.h"
+#include "GAS/DASurvivalAttributeSet.h"
 
 UCombatComponent::UCombatComponent()
 {
@@ -94,17 +94,18 @@ void UCombatComponent::TakeDamage(float Damage, AActor* Instigator)
         }
     }
 
-    // Apply to health if we have a statline component
+    // Apply to health using GAS
     AActor* Owner = GetOwner();
     if (Owner)
     {
         ADAPlayerCharacter* PlayerChar = Cast<ADAPlayerCharacter>(Owner);
-        if (PlayerChar && PlayerChar->GetStatlineComponent())
+        if (PlayerChar && PlayerChar->AbilitySystemComponent)
         {
-            PlayerChar->GetStatlineComponent()->UpdateStat(FName("Health"), -ActualDamage);
-            float CurrentHealth = PlayerChar->GetStatlineComponent()->GetCurrentStatValue(FName("Health"));
+            float CurrentHealth = PlayerChar->AbilitySystemComponent->GetNumericAttribute(UDASurvivalAttributeSet::GetHealthAttribute());
+            float NewHealth = FMath::Max(0.f, CurrentHealth - ActualDamage);
+            PlayerChar->AbilitySystemComponent->SetNumericAttributeBase(UDASurvivalAttributeSet::GetHealthAttribute(), NewHealth);
 
-            if (CurrentHealth <= 0.0f)
+            if (NewHealth <= 0.0f)
             {
                 SetCombatState(ECombatState::Dead);
                 OnDeath.Broadcast();

@@ -221,6 +221,18 @@ void ADAPlayerCharacter::HandleInteract(const FInputActionValue& Value)
 		InteractionComponent->Interact();
 	}
 }
+
+void ADAPlayerCharacter::PlayShiverAnimation()
+{
+	if (ShiverAnimationMontage)
+	{
+		UAnimInstance* AnimInstance = GetMesh() ? GetMesh()->GetAnimInstance() : nullptr;
+		if (AnimInstance && !AnimInstance->Montage_IsPlaying(ShiverAnimationMontage))
+		{
+			AnimInstance->Montage_Play(ShiverAnimationMontage);
+		}
+	}
+}
 void ADAPlayerCharacter::InitializeAbilities()
 {
 	if (!HasAuthority() && !IsLocallyControlled()) return;  // Server/client handling
@@ -297,17 +309,6 @@ void ADAPlayerCharacter::AttemptLockpick()
 	UE_LOG(LogTemp, Log, TEXT("Final Critical Failure (Noise) Chance: %.1f%%"), BaseCritFailChance);
 }
 
-void ADAPlayerCharacter::PlayShiverAnimation()
-{
-	if (ShiverAnimationMontage)
-	{
-		UAnimInstance* AnimInstance = GetMesh() ? GetMesh()->GetAnimInstance() : nullptr;
-		if (AnimInstance && !AnimInstance->Montage_IsPlaying(ShiverAnimationMontage))
-		{
-			AnimInstance->Montage_Play(ShiverAnimationMontage);
-		}
-	}
-}
 
 // --- Faction Debug Commands ---
 void ADAPlayerCharacter::PrintFactionReputationDebug(FString FactionIDString)

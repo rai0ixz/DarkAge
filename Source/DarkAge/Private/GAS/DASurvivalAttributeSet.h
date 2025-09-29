@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayEffectTypes.h"  // For FGameplayEffectModCallbackData
 #include "AttributeSet.h"
 #include "AbilitySystemComponent.h"  // For UAbilitySystemComponent
 #include "DASurvivalAttributeSet.generated.h"
@@ -57,8 +58,20 @@ public:
     FGameplayAttributeData Stamina;
     ATTRIBUTE_ACCESSORS(UDASurvivalAttributeSet, Stamina)
 
+    UPROPERTY(BlueprintReadOnly, Category = "Combat", ReplicatedUsing = OnRep_BaseDamage)
+    FGameplayAttributeData BaseDamage;
+    ATTRIBUTE_ACCESSORS(UDASurvivalAttributeSet, BaseDamage)
+
+    UPROPERTY(BlueprintReadOnly, Category = "Combat", ReplicatedUsing = OnRep_STRModifier)
+    FGameplayAttributeData STRModifier;
+    ATTRIBUTE_ACCESSORS(UDASurvivalAttributeSet, STRModifier)
+
+    UPROPERTY(BlueprintReadOnly, Category = "Combat", ReplicatedUsing = OnRep_ArmorDR)
+    FGameplayAttributeData ArmorDR;
+    ATTRIBUTE_ACCESSORS(UDASurvivalAttributeSet, ArmorDR)
+
     virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
-    virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data) override;
+    // virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data) override;
 
 protected:
     UFUNCTION()
@@ -84,4 +97,13 @@ protected:
 
     UFUNCTION()
     void OnRep_Stamina(const FGameplayAttributeData& OldStamina) { GAMEPLAYATTRIBUTE_REPNOTIFY(UDASurvivalAttributeSet, Stamina, OldStamina); }
+
+    UFUNCTION()
+    void OnRep_BaseDamage(const FGameplayAttributeData& OldBaseDamage) { GAMEPLAYATTRIBUTE_REPNOTIFY(UDASurvivalAttributeSet, BaseDamage, OldBaseDamage); }
+
+    UFUNCTION()
+    void OnRep_STRModifier(const FGameplayAttributeData& OldSTRModifier) { GAMEPLAYATTRIBUTE_REPNOTIFY(UDASurvivalAttributeSet, STRModifier, OldSTRModifier); }
+
+    UFUNCTION()
+    void OnRep_ArmorDR(const FGameplayAttributeData& OldArmorDR) { GAMEPLAYATTRIBUTE_REPNOTIFY(UDASurvivalAttributeSet, ArmorDR, OldArmorDR); }
 };

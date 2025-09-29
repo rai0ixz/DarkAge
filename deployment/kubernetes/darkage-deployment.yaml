@@ -1,0 +1,363 @@
+# DarkAge Kubernetes Deployment Configuration
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: darkage
+  labels:
+    name: darkage
+    environment: production
+
+---
+# ConfigMap for game configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: darkage-config
+  namespace: darkage
+data:
+  server.ini: |
+    [/Script/Engine.GameSession]
+    MaxPlayers=100
+    
+    [/Script/DarkAge.DAGameMode]
+    bEnableAdvancedEconomy=true
+    bEnableNPCEcosystem=true
+    bEnablePoliticalSystem=true
+    
+    [/Script/DarkAge.EconomySubsystem]
+    UpdateInterval=30.0
+    MaxRegionalMarkets=50
+    
+    [/Script/DarkAge.NPCEcosystemSubsystem]
+    MaxNPCCount=500
+    UpdateFrequency=1.0
+    
+    [/Script/DarkAge.DALoggingSubsystem]
+    LogLevel=Info
+    FileLoggingEnabled=true
+    
+  logging.ini: |
+    [Core.Log]
+    LogDarkAge=Log
+    LogDarkAgeEconomy=Log
+    LogDarkAgeNPC=Verbose
+    LogDarkAgeCrime=Log
+    LogDarkAgePolitics=Log
+    LogDarkAgeQuests=Log
+    LogDarkAgeSurvival=Log
+    LogDarkAgeWeather=Log
+    LogDarkAgeAI=Verbose
+    LogDarkAgeCombat=Log
+    LogDarkAgeUI=Warning
+    LogDarkAgeNetwork=Log
+    LogDarkAgeSecurity=Warning
+    LogDarkAgePerformance=Log
+
+---
+# Secret for database credentials
+apiVersion: v1
+kind: Secret
+metadata:
+  name: darkage-secrets
+  namespace: darkage
+type: Opaque
+data:
+  # Base64 encoded values (these would be real secrets in production)
+  db-username: ZGFya2FnZQ==  # darkage
+  db-password: c2VjdXJlUGFzcw==  # securePass
+  admin-token: YWRtaW5Ub2tlbjEyMw==  # adminToken123
+
+---
+# Persistent Volume Claim for game data
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: darkage-data
+  namespace: darkage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: fast-ssd
+
+---
+# DarkAge Game Server Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: darkage-server
+  namespace: darkage
+  labels:
+    app: darkage-server
+    version: v1.0.0
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: darkage-server
+  template:
+    metadata:
+      labels:
+        app: darkage-server
+        version: v1.0.0
+    spec:
+      containers:
+      - name: darkage-server
+        image: darkage/server:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 7777
+          protocol: UDP
+          name: game-port
+        - containerPort: 7778
+          protocol: TCP
+          name: query-port
+        - containerPort: 8080
+          protocol: TCP
+          name: http-api
+        env:
+        - name: SERVER_NAME
+          value: "DarkAge Production Server"
+        - name: MAX_PLAYERS
+          value: "100"
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: darkage-secrets
+              key: db-username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: darkage-secrets
+              key: db-password
+        - name: ADMIN_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: darkage-secrets
+              key: admin-token
+        volumeMounts:
+        - name: config-volume
+          mountPath: /home/gameserver/Config
+          readOnly: true
+        - name: data-volume
+          mountPath: /home/gameserver/Saved
+        - name: logs-volume
+          mountPath: /home/gameserver/Logs
+        resources:
+          requests:
+            memory: "4Gi"
+            cpu: "2000m"
+          limits:
+            memory: "8Gi"
+            cpu: "4000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "echo 'Graceful shutdown initiated' && sleep 30"]
+      volumes:
+      - name: config-volume
+        configMap:
+          name: darkage-config
+      - name: data-volume
+        persistentVolumeClaim:
+          claimName: darkage-data
+      - name: logs-volume
+        emptyDir: {}
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 60
+
+---
+# Service for game server
+apiVersion: v1
+kind: Service
+metadata:
+  name: darkage-service
+  namespace: darkage
+  labels:
+    app: darkage-server
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 7777
+    targetPort: 7777
+    protocol: UDP
+    name: game-port
+  - port: 7778
+    targetPort: 7778
+    protocol: TCP
+    name: query-port
+  selector:
+    app: darkage-server
+
+---
+# Service for HTTP API
+apiVersion: v1
+kind: Service
+metadata:
+  name: darkage-api-service
+  namespace: darkage
+  labels:
+    app: darkage-server
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http-api
+  selector:
+    app: darkage-server
+
+---
+# Horizontal Pod Autoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: darkage-hpa
+  namespace: darkage
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: darkage-server
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 600
+      policies:
+      - type: Percent
+        value: 25
+        periodSeconds: 60
+
+---
+# Ingress for HTTP API
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: darkage-ingress
+  namespace: darkage
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+spec:
+  tls:
+  - hosts:
+    - api.darkage.game
+    secretName: darkage-tls
+  rules:
+  - host: api.darkage.game
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: darkage-api-service
+            port:
+              number: 8080
+
+---
+# Network Policy for security
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: darkage-network-policy
+  namespace: darkage
+spec:
+  podSelector:
+    matchLabels:
+      app: darkage-server
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 8080
+  - from: []
+    ports:
+    - protocol: UDP
+      port: 7777
+    - protocol: TCP
+      port: 7778
+  egress:
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 53
+    - protocol: UDP
+      port: 53
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 80
+
+---
+# ServiceMonitor for Prometheus monitoring
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: darkage-metrics
+  namespace: darkage
+  labels:
+    app: darkage-server
+spec:
+  selector:
+    matchLabels:
+      app: darkage-server
+  endpoints:
+  - port: http-api
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s

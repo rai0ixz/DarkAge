@@ -1,0 +1,8 @@
+{
+  "solution": {
+    "path": "DarkAge.sln"
+  },
+  "projects": [
+    "Intermediate\\ProjectFiles\\DarkAge.vcxproj"
+  ]
+}

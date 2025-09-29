@@ -1,0 +1,120 @@
+# Unreal Engine
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+*.sln
+*.suo
+*.opensdf
+*.sdf
+*.VC.db
+*.VC.opendb
+*.vscode/
+*.xcodeproj
+*.xcworkspace
+*.xcuserstate
+*.DS_Store
+*.pdb
+*.ipdb
+*.obj
+*.log
+*.tlog
+*.tmp
+*.bak
+*.cache
+*.db
+*.bin
+*.exe
+*.dll
+*.app
+*.dylib
+*.so
+*.apk
+*.ipa
+*.xap
+*.unityproj
+*.userprefs
+*.user
+*.userosscache
+*.sln.docstates
+*.ncb
+*.sbr
+*.tlb
+*.tli
+*.tlh
+*.tmp_proj
+*.vs/
+*.dbmdl
+*.dbproj.schemaview
+*.jfm
+*.pfx
+*.publishsettings
+*.snk
+*.aps
+*.opt
+*.vbw
+*.plg
+*.gpState
+*.DotSettings.user
+*.dotCover
+*.tss
+*.jmconfig
+*.btp.cs
+*.btm.cs
+*.odx.cs
+*.xsd.cs
+*.binlog
+*.nvuser
+*.mfractor/
+.localhistory/
+healthchecksdb
+MigrationBackup/
+.ionide/
+FodyWeavers.xsd
+# Unreal Engine asset types for LFS
+*.uasset filter=lfs diff=lfs merge=lfs -text
+*.umap filter=lfs diff=lfs merge=lfs -text
+*.ubulk filter=lfs diff=lfs merge=lfs -text
+*.ufont filter=lfs diff=lfs merge=lfs -text
+*.png filter=lfs diff=lfs merge=lfs -text
+*.jpg filter=lfs diff=lfs merge=lfs -text
+*.mp3 filter=lfs diff=lfs merge=lfs -text
+*.wav filter=lfs diff=lfs merge=lfs -text
+*.mp4 filter=lfs diff=lfs merge=lfs -text
+*.mov filter=lfs diff=lfs merge=lfs -text
+*.fbx filter=lfs diff=lfs merge=lfs -text
+*.obj filter=lfs diff=lfs merge=lfs -text
+*.tga filter=lfs diff=lfs merge=lfs -text
+*.exr filter=lfs diff=lfs merge=lfs -text
+*.hdr filter=lfs diff=lfs merge=lfs -text
+*.dds filter=lfs diff=lfs merge=lfs -text
+*.psd filter=lfs diff=lfs merge=lfs -text
+*.avi filter=lfs diff=lfs merge=lfs -text
+*.wmv filter=lfs diff=lfs merge=lfs -text
+*.m4a filter=lfs diff=lfs merge=lfs -text
+*.ogg filter=lfs diff=lfs merge=lfs -text
+*.flac filter=lfs diff=lfs merge=lfs -text
+*.bmp filter=lfs diff=lfs merge=lfs -text
+*.tif filter=lfs diff=lfs merge=lfs -text
+*.tiff filter=lfs diff=lfs merge=lfs -text
+*.csv filter=lfs diff=lfs merge=lfs -text
+*.json filter=lfs diff=lfs merge=lfs -text
+*.xml filter=lfs diff=lfs merge=lfs -text
+*.txt filter=lfs diff=lfs merge=lfs -text
+# End Unreal Engine
+
+# .NET
+artifacts/
+*.nupkg
+*.snupkg
+*.nuget.props
+*.nuget.targets
+# End .NET
+
+# Node.js
+node_modules/
+# End Node.js
+
+# Ignore large build outputs
+Binaries/Win64/*.exe
+Intermediate/CachedAssetRegistry_*.bin
